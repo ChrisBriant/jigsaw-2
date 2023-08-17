@@ -26,15 +26,8 @@
         //Store the tiles that have already been selected
         let selectedTiles = [];
         let grid = [];
-        let currentPiece = [];
-        let jigsawPieces = [];
         //Define the grid size
         const tileSizeFactor = 16;
-
-
-        function getRandomInt(min, max) {
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
 
         function getArrayDifference(array1, array2) {
             return array1.filter(item1 => !array2.some(item2 => (item1.posX === item2.posX) && (item1.posY === item2.posY) ));
@@ -103,9 +96,6 @@
             //Drop out if reached amount of pieces
             let newDepth = depth - 1;
             if(newDepth < 0) {
-                //Add the jigsaw piece and reset the current piece
-                jigsawPieces.push(currentPiece);
-                currentPiece = [];
                 return;
             }
 
@@ -114,11 +104,7 @@
             if(isTileSelected(tileIdx)) {
                 //Push the selected tile
                 selectedTiles.push(tile);
-                //Add to jigsaw
-                currentPiece.push(tile);
                 ctx.putImageData(tile.image, tile.posX, tile.posY);
-            } else {
-                return;
             }
 
             //Get possible tiles
@@ -126,13 +112,6 @@
             // if(!adjacentTiles) {
             //     return null;
             // }
-            //TO DO
-            //NEED TO FIND OUT WHY IT IS DOING MORE THAN 10
-            if(!adjacentTiles) {
-                jigsawPieces.push(currentPiece);
-                currentPiece = [];
-                return;
-            }
             const adjacentTilesNotNull = removeNullValues(adjacentTiles);
             const adjacentTilesKeys = Object.keys(adjacentTilesNotNull);
             let nextTile = null;
@@ -157,19 +136,12 @@
             //console.log(selectedTiles);
         }
 
-        function createJigsaw(ctx,remainingPieces=grid) {
-            const piecesNotAlreadyUsed = getArrayDifference(remainingPieces,selectedTiles);
-            console.log('PIECES NOT ALREADY USED', piecesNotAlreadyUsed.length);
-            if(piecesNotAlreadyUsed.length === 1) {
-                return;
-            }
+        function createJigsaw(ctx) {
+            const piecesNotAlreadyUsed = getArrayDifference(grid,selectedTiles);
             const randomTile = getRandomObjectFromArray(piecesNotAlreadyUsed);
             const randomTileIdx = getTileIndex(randomTile,canvas.width,canvas.height,tileSizeFactor);
             console.log('THESE ARE NOT ALREADY USED', piecesNotAlreadyUsed, randomTile, randomTileIdx);
-            const pieceSize = getRandomInt(4,10);
-            createJigsawPiece(randomTileIdx,canvas.width,canvas.height,tileSizeFactor,grid,ctx,pieceSize);
-            console.log('JIGSAW PIECES', jigsawPieces);
-            return createJigsaw(ctx,piecesNotAlreadyUsed);
+            createJigsawPiece(randomTileIdx,canvas.width,canvas.height,tileSizeFactor,grid,ctx,16);
         }
 
 
@@ -232,7 +204,7 @@
             ctx.globalAlpha = 1;
             console.log('The grid', grid);
             //ctx.fillRect(grid[45].posX,grid[45].posY,grid[45].width,grid[45].height);
-            //ctx.putImageData(grid[122].image, grid[122].posX, grid[122].posY);
+            ctx.putImageData(grid[122].image, grid[122].posX, grid[122].posY);
             // ctx.putImageData(grid[29].image, grid[29].posX, grid[29].posY);
             // ctx.putImageData(grid[61].image, grid[61].posX, grid[61].posY);
             // ctx.putImageData(grid[44].image, grid[44].posX, grid[44].posY);
