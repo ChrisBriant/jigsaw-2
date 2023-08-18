@@ -26,22 +26,16 @@
         //Store the tiles that have already been selected
         let selectedTiles = [];
         let grid = [];
-        let currentPiece = [];
         let jigsawPieces = [];
         //Define the grid size
         const tileSizeFactor = 16;
-
 
         function getRandomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
         function getArrayDifference(array1, array2) {
-            return array1.filter(item1 => !array2.some(item2 => (item1.posX === item2.posX) && (item1.posY === item2.posY) ));
-        }
-
-        function removeNullValues(obj) {
-            return Object.fromEntries(Object.entries(obj).filter(([key, value]) => value !== null));
+            return array1.filter(item1 => !array2.some(item2 => (item1 === item2) && (item1 === item2) ));
         }
 
         function getRandomObjectFromArray(array) {
@@ -49,134 +43,107 @@
             return array[randomIndex];
         }
 
-        //Return null value if tile is in the selected list
-        function isTileSelected(tileIdx) {
-            const tile = grid[tileIdx];
-            const found = selectedTiles.find((t) => t.posX === tile.posX && t.posY === tile.posY) || null;
-            //console.log('TILE IN SELECTED TIELS',found, tile.posX, tile.posY);
+        function getTileIndexAndGridCoordsWithSurroundingTiles(posX,posY, tileSize) {
+            const xGrid = tileSizeFactor - ((canvas.width - posX) / tileSize);
+            const yGrid = tileSizeFactor - ((canvas.height - posY) / tileSize);
+
+            let tileAdjacentObj = {
+              xGrid,
+              yGrid,
+              grdIdx : yGrid * tileSizeFactor + xGrid,
+              surroundingTiles : {
+                topTile : yGrid > 0 ?{
+                  xGrid : xGrid,
+                  yGrid : yGrid -1, 
+                  grdIdx : (yGrid -1) * tileSizeFactor + xGrid
+                } : null,
+                bottomTile : yGrid < tileSizeFactor - 1 ?{
+                  xGrid : xGrid,
+                  yGrid : yGrid + 1, 
+                  grdIdx : (yGrid +1) * tileSizeFactor + xGrid
+                } : null,
+                leftTile : xGrid > 0 ? {
+                  xGrid : xGrid - 1,
+                  yGrid : yGrid, 
+                  grdIdx : yGrid * tileSizeFactor + (xGrid - 1)
+                } : null,
+                rightTile : xGrid < tileSizeFactor - 1 ? {
+                  xGrid : xGrid + 1,
+                  yGrid : yGrid, 
+                  grdIdx : yGrid * tileSizeFactor + (xGrid + 1)
+                } : null,
+              }
+            }
+
+            //filter out tiles which are already selected
+            let found = selectedTiles.find((idx) => idx === tileAdjacentObj.grdIdx) || null
             if(found) {
-                return null;
-            } else {
-                return tileIdx;
+              return null;
             }
+
+            //Search the adjacent tiles
+            const adjacentTilesNotNull = Object.values(tileAdjacentObj.surroundingTiles).filter( val => val !== null);
+            Object.keys(adjacentTilesNotNull).forEach((key) => {
+              found = selectedTiles.find((idx) => idx === adjacentTilesNotNull[key].grdIdx) || null
+              if(found) {
+                tileAdjacentObj.surroundingTiles[key] = null;
+              }
+            });
+
+            return tileAdjacentObj;
         }
 
-        function getTileIndex(tile,canvasWidth,canvasHeight,gridSize) {
-            const xGrid = gridSize - ((canvasWidth - tile.posX) / tile.width);
-            const yGrid = gridSize - ((canvasHeight - tile.posY) / tile.width);
+        function makeJigsawPiece(posX,posY,tileSize,size=0,tiles=[]) {
+          //Exit condition
+          if(size === 0) {
+            return tiles;
+          }
 
-            return yGrid * gridSize + xGrid;
+          const tileRefAndAdjacent = getTileIndexAndGridCoordsWithSurroundingTiles(posX,posY,tileSize);
+          if(!tileRefAndAdjacent) {
+            return tiles;
+          }
+
+          //Add the piece to selected and new tiles which is the jigsaw piece
+          selectedTiles.push(tileRefAndAdjacent.grdIdx);
+          const newTiles = [...tiles,tileRefAndAdjacent.grdIdx];
+
+          const adjacentTilesNotNull = Object.values(tileRefAndAdjacent.surroundingTiles).filter( val => val !== null);
+          console.log('Available Adjacent Tiles', tileRefAndAdjacent, adjacentTilesNotNull);
+          if(adjacentTilesNotNull.length === 0) {
+            return newTiles;
+          }
+          nextTile = getRandomObjectFromArray(adjacentTilesNotNull);
+          const newSize = size - 1;
+          const newPosX = grid[nextTile.grdIdx].posX
+          const newPosY = grid[nextTile.grdIdx].posY
+          return makeJigsawPiece(newPosX,newPosY,tileSize,newSize,newTiles);
         }
 
-        function getPossibleNextImageTiles(tile,canvasWidth,canvasHeight,gridSize) {
-            const xGrid = gridSize - ((canvasWidth - tile.posX) / tile.width);
-            const yGrid = gridSize - ((canvasHeight - tile.posY) / tile.width);
-
-            if(!isTileSelected(yGrid * gridSize + xGrid)) {
-                console.log('Tile is already selected')
-                return null;
-            }
-            //Get the adjacent tiles
-            // const topTile = (yGrid -1) * gridSize + xGrid;
-            // const bottomTile = (yGrid +1) * gridSize + xGrid;
-            // const leftTile = yGrid * gridSize + (xGrid - 1);
-            // const rightTile = yGrid * gridSize + (xGrid + 1);
-            // const adjacentTiles = {
-            //     topTile : yGrid > 0 ? (yGrid -1) * gridSize + xGrid : null,
-            //     bottomTile : yGrid !== (gridSize - 1) ? (yGrid +1) * gridSize + xGrid : null,
-            //     leftTile : xGrid > 0 ? yGrid * gridSize + (xGrid - 1) : null,
-            //     rightTile : xGrid !== (gridSize - 1) ? yGrid * gridSize + (xGrid + 1) : null,
-            // }
-            //console.log('IS TILES SLECTED', isTileSelected((yGrid -1) * gridSize + xGrid));
-            const adjacentTiles = {
-                topTile : yGrid > 0 ? isTileSelected((yGrid -1) * gridSize + xGrid) : null,
-                bottomTile : yGrid !== (gridSize - 1) ? isTileSelected((yGrid +1) * gridSize + xGrid) : null,
-                leftTile : xGrid > 0 ? isTileSelected(yGrid * gridSize + (xGrid - 1)) : null,
-                rightTile : xGrid !== (gridSize - 1) ? isTileSelected(yGrid * gridSize + (xGrid + 1)) : null,
-            }
-            //const adjacentTiles = {};
-            //console.log('Grid Position',xGrid,yGrid, adjacentTiles);
-            return adjacentTiles;
+        //Draw jigsaw piece with a random color
+        function drawJigsawPiece(piece, ctx) {
+          ctx.fillStyle = `rgba(${getRandomInt(0,255)}, ${getRandomInt(0,255)}, ${getRandomInt(0,255)}, 0.5)`;
+          piece.forEach(idx => {
+            ctx.fillRect(grid[idx].posX, grid[idx].posY, grid[idx].width, grid[idx].height);
+          })
         }
 
-        function createJigsawPiece(tileIdx,canvasWidth,canvasHeight,gridSize,grid,ctx,depth=0) {
-            //Drop out if reached amount of pieces
-            let newDepth = depth - 1;
-            if(newDepth < 0) {
-                //Add the jigsaw piece and reset the current piece
-                jigsawPieces.push(currentPiece);
-                currentPiece = [];
-                return;
-            }
-
-            let tile = grid[tileIdx];
-            const adjacentTiles = getPossibleNextImageTiles(tile,canvasWidth,canvasHeight,gridSize,grid,ctx);
-            if(isTileSelected(tileIdx)) {
-                //Push the selected tile
-                selectedTiles.push(tile);
-                //Add to jigsaw
-                currentPiece.push(tile);
-                ctx.putImageData(tile.image, tile.posX, tile.posY);
-            } else {
-                return;
-            }
-
-            //Get possible tiles
-            
-            // if(!adjacentTiles) {
-            //     return null;
-            // }
-            //TO DO
-            //NEED TO FIND OUT WHY IT IS DOING MORE THAN 10
-            if(!adjacentTiles) {
-                jigsawPieces.push(currentPiece);
-                currentPiece = [];
-                return;
-            }
-            const adjacentTilesNotNull = removeNullValues(adjacentTiles);
-            const adjacentTilesKeys = Object.keys(adjacentTilesNotNull);
-            let nextTile = null;
-            if(adjacentTilesKeys.length > 0) {
-                nextTile = adjacentTilesNotNull[getRandomObjectFromArray(adjacentTilesKeys)];
-            }
-
-            //console.log('HERE', adjacentTilesNotNull, nextTile);
-            if(nextTile) {
-                createJigsawPiece(nextTile,canvasWidth,canvasHeight,gridSize,grid,ctx,newDepth--);
-            } else {
-                return;
-            }
-            // Object.keys(adjacentTiles).forEach((key) => {
-            //     const piece = grid[adjacentTiles[key]];
-            //     if(piece) {
-            //         selectedTiles.push(piece);
-            //         ctx.putImageData(piece.image, piece.posX, piece.posY);
-            //     }
-
-            // });
-            //console.log(selectedTiles);
-        }
-
-        function createJigsaw(ctx,remainingPieces=grid) {
-            const piecesNotAlreadyUsed = getArrayDifference(remainingPieces,selectedTiles);
-            console.log('PIECES NOT ALREADY USED', piecesNotAlreadyUsed.length);
-            if(piecesNotAlreadyUsed.length === 1) {
-                return;
-            }
-            const randomTile = getRandomObjectFromArray(piecesNotAlreadyUsed);
-            const randomTileIdx = getTileIndex(randomTile,canvas.width,canvas.height,tileSizeFactor);
-            console.log('THESE ARE NOT ALREADY USED', piecesNotAlreadyUsed, randomTile, randomTileIdx);
-            const pieceSize = getRandomInt(4,10);
-            createJigsawPiece(randomTileIdx,canvas.width,canvas.height,tileSizeFactor,grid,ctx,pieceSize);
-            console.log('JIGSAW PIECES', jigsawPieces);
-            return createJigsaw(ctx,piecesNotAlreadyUsed);
+        function createJigsaw(ctx) {
+          const gridIndices = grid.map((_,idx) => idx);
+          const remainingTiles = getArrayDifference(gridIndices,selectedTiles);
+          if(remainingTiles.length < 1) {
+            return;
+          }
+          const randomTileIndex = getRandomObjectFromArray(remainingTiles);
+          const size = getRandomInt(4,8);
+          const piece = makeJigsawPiece(grid[randomTileIndex].posX,grid[randomTileIndex].posY,grid[randomTileIndex].width,size);
+          drawJigsawPiece(piece,ctx);
+          jigsawPieces.push(piece);
+          return createJigsaw(ctx);
         }
 
 
         ////////////////////////////////////////////////////////////////////////
-
-
-
         // MAIN
         // Create an image object
         const img = new Image();
@@ -229,20 +196,22 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.globalAlpha = 0.5;
             ctx.drawImage(img, 0, 0,canvas.height,canvas.width);
+
+            //TESTING
             ctx.globalAlpha = 1;
-            console.log('The grid', grid);
-            //ctx.fillRect(grid[45].posX,grid[45].posY,grid[45].width,grid[45].height);
-            //ctx.putImageData(grid[122].image, grid[122].posX, grid[122].posY);
-            // ctx.putImageData(grid[29].image, grid[29].posX, grid[29].posY);
-            // ctx.putImageData(grid[61].image, grid[61].posX, grid[61].posY);
-            // ctx.putImageData(grid[44].image, grid[44].posX, grid[44].posY);
-            // ctx.putImageData(grid[46].image, grid[46].posX, grid[46].posY);
-            //const possibleTiles = getPossibleNextImageTiles(grid[122],canvas.width,canvas.height,tileSizeFactor);
-            //createJigsawPiece(122,canvas.width,canvas.height,tileSizeFactor,grid,ctx,16);
-            //ctx.putImageData(grid[122].image, grid[122].posX, grid[122].posY);
-            //const nextPossibleTiles = getPossibleNextImageTiles(grid[154],canvas.width,canvas.height,tileSizeFactor);
-            //console.log('NEXT TIlES', nextPossibleTiles);
+
             createJigsaw(ctx);
+            console.log(jigsawPieces);
+            //Check Jigsaw
+
+            let segmentCount = 0;
+            jigsawPieces.forEach(p => {
+              segmentCount += p.length;
+            });
+            console.log('The segment count is ', segmentCount);
+            console.log('The grid count is ', grid.length);
+
+            //END TESTING
         };
 
 
