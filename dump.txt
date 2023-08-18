@@ -1,0 +1,7 @@
+              if(
+                (tileAdjacentObj.surroundingTiles[key].posX < 0  && tileAdjacentObj.surroundingTiles[key].posX > (tileSizeFactor + 1))
+                && (tileAdjacentObj.surroundingTiles[key].posY < 0 && tileAdjacentObj.surroundingTiles[key].posY > (tileSizeFactor + 1)) 
+              )
+              {
+                tileAdjacentObj.surroundingTiles[key] = null;
+              }
