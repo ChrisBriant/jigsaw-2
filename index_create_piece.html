@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="style.css">
+    <title>Jigsaw</title>
+</head>
+<body>
+    <header>
+        <h1>Jigsaw</h1>
+    </header>
+    <main>
+        <!-- main canvas area -->
+        <section id="canvas-section">
+            <canvas id="canvas"></canvas>
+        </section>
+    </main>
+    <footer>
+        <p>&copy Chris Briant <script>document.write(new Date().getFullYear());</script></p>
+    </footer>
+    <script>
+        //FUNCTIONS
+        //Store the tiles that have already been selected
+        let selectedTiles = [];
+        let grid = [];
+        let jigsawPieces = [];
+        //Define the grid size
+        const tileSizeFactor = 16;
+
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function getArrayDifference(array1, array2) {
+            return array1.filter(item1 => !array2.some(item2 => (item1 === item2) && (item1 === item2) ));
+        }
+
+        function getRandomObjectFromArray(array) {
+            let randomIndex = Math.floor(Math.random() * array.length);
+            return array[randomIndex];
+        }
+
+        function getTileIndexAndGridCoordsWithSurroundingTiles(posX,posY, tileSize) {
+            const xGrid = tileSizeFactor - ((canvas.width - posX) / tileSize);
+            const yGrid = tileSizeFactor - ((canvas.height - posY) / tileSize);
+
+            let tileAdjacentObj = {
+              xGrid,
+              yGrid,
+              grdIdx : yGrid * tileSizeFactor + xGrid,
+              surroundingTiles : {
+                topTile : yGrid > 0 ?{
+                  xGrid : xGrid,
+                  yGrid : yGrid -1, 
+                  grdIdx : (yGrid -1) * tileSizeFactor + xGrid
+                } : null,
+                bottomTile : yGrid < tileSizeFactor - 1 ?{
+                  xGrid : xGrid,
+                  yGrid : yGrid + 1, 
+                  grdIdx : (yGrid +1) * tileSizeFactor + xGrid
+                } : null,
+                leftTile : xGrid > 0 ? {
+                  xGrid : xGrid - 1,
+                  yGrid : yGrid, 
+                  grdIdx : yGrid * tileSizeFactor + (xGrid - 1)
+                } : null,
+                rightTile : xGrid < tileSizeFactor - 1 ? {
+                  xGrid : xGrid + 1,
+                  yGrid : yGrid, 
+                  grdIdx : yGrid * tileSizeFactor + (xGrid + 1)
+                } : null,
+              }
+            }
+
+            //filter out tiles which are already selected
+            let found = selectedTiles.find((idx) => idx === tileAdjacentObj.grdIdx) || null
+            if(found) {
+              return null;
+            }
+
+            //Search the adjacent tiles
+            const adjacentTilesNotNull = Object.values(tileAdjacentObj.surroundingTiles).filter( val => val !== null);
+            Object.keys(adjacentTilesNotNull).forEach((key) => {
+              found = selectedTiles.find((idx) => idx === adjacentTilesNotNull[key].grdIdx) || null
+              if(found) {
+                tileAdjacentObj.surroundingTiles[key] = null;
+              }
+            });
+
+            return tileAdjacentObj;
+        }
+
+        function makeJigsawPiece(posX,posY,tileSize,size=0,tiles=[]) {
+          //Exit condition
+          if(size === 0) {
+            return tiles;
+          }
+
+          const tileRefAndAdjacent = getTileIndexAndGridCoordsWithSurroundingTiles(posX,posY,tileSize);
+          if(!tileRefAndAdjacent) {
+            return tiles;
+          }
+
+          //Add the piece to selected and new tiles which is the jigsaw piece
+          selectedTiles.push(tileRefAndAdjacent.grdIdx);
+          const newTiles = [...tiles,tileRefAndAdjacent.grdIdx];
+
+          const adjacentTilesNotNull = Object.values(tileRefAndAdjacent.surroundingTiles).filter( val => val !== null);
+          if(adjacentTilesNotNull.length === 0) {
+            return newTiles;
+          }
+          nextTile = getRandomObjectFromArray(adjacentTilesNotNull);
+          const newSize = size - 1;
+          const newPosX = grid[nextTile.grdIdx].posX
+          const newPosY = grid[nextTile.grdIdx].posY
+          return makeJigsawPiece(newPosX,newPosY,tileSize,newSize,newTiles);
+        }
+
+        //Draw jigsaw piece with a random color
+        function drawJigsawPiece(piece, ctx) {
+          ctx.fillStyle = `rgba(${getRandomInt(0,255)}, ${getRandomInt(0,255)}, ${getRandomInt(0,255)}, 0.5)`;
+          piece.forEach(idx => {
+            ctx.fillRect(grid[idx].posX, grid[idx].posY, grid[idx].width, grid[idx].height);
+          });
+        }
+
+        function drawJigsawPieceObject(piece,ctx) {
+          ctx.fillStyle = `rgba(${getRandomInt(0,255)}, ${getRandomInt(0,255)}, ${getRandomInt(0,255)}, 0.5)`;
+          piece.forEach(piece => {
+            ctx.fillRect(piece.posX, piece.posY, piece.width, piece.height);
+          });
+        }
+
+        function createJigsaw(ctx) {
+          const gridIndices = grid.map((_,idx) => idx);
+          const remainingTiles = getArrayDifference(gridIndices,selectedTiles);
+          if(remainingTiles.length < 1) {
+            return;
+          }
+          const randomTileIndex = getRandomObjectFromArray(remainingTiles);
+          const size = getRandomInt(4,8);
+          const piece = makeJigsawPiece(grid[randomTileIndex].posX,grid[randomTileIndex].posY,grid[randomTileIndex].width,size);
+          drawJigsawPiece(piece,ctx);
+          jigsawPieces.push(piece);
+          return createJigsaw(ctx);
+        }
+
+        //Gets the jigsaw piece as an object, containing all the tiles
+        function getJigSawPieceObject(piece) {
+            let jigsawPiece = [];
+            piece.forEach(idx => {
+                jigsawPiece.push(grid[idx]);
+            });
+            return jigsawPiece;
+        }
+
+        function translateJigSawPiece(piece) {
+            minXPiece = null;
+            minYPiece = null;
+
+            //Iterate through and find the tile(s) with the smallest x and smallest y values
+            piece.forEach(segment => {
+                if(!minXPiece && !minYPiece) {
+                    minXPiece = segment;
+                    minYPiece = segment;
+                } else {
+                    if(segment.posX < minXPiece.posX) {
+                        minXPiece = segment;
+                    }
+                    if(segment.posY < minYPiece.posY) {
+                        minYPiece = segment;
+                    }
+                } 
+            });
+
+            //Reduce the x and y coordinates of each piece
+            let pieceCopy = [...piece];
+            let newPiece = [];
+            pieceCopy.forEach(segment => {
+                let newSegment = {...segment};
+                newSegment.posX = segment.posX - minXPiece.posX;
+                newSegment.posY = segment.posY - minYPiece.posY;
+                newPiece.push(newSegment);                
+            });
+            return newPiece;
+        }
+
+        ////////////////////////////////////////////////////////////////////////
+        // MAIN
+        // Create an image object
+        const img = new Image();
+
+        // Set the image source   
+        img.src = "img/image.jpg";
+
+        // Wait for the image to load
+        img.onload = function() {
+            // Get the canvas element
+            const canvas = document.querySelector('#canvas');
+
+            // Set the canvas size to the image size
+            canvas.width = img.width / 2;
+            canvas.height = img.height / 2;
+
+            // Get the canvas context
+            const ctx = canvas.getContext("2d");
+
+            // Draw the image on the canvas
+            ctx.drawImage(img, 0, 0,canvas.height,canvas.width);
+
+            // Get the width and height of each segment
+            const segmentWidth = canvas.width / tileSizeFactor;
+            const segmentHeight = canvas.height / tileSizeFactor;
+
+            // Loop through each segment
+            let index = 0;
+            for (let row = 0; row < tileSizeFactor; row++) {
+                for (let col = 0; col < tileSizeFactor; col++) {
+                    // Get the x and y coordinates of the segment
+                    const x = col * segmentWidth;
+                    const y = row * segmentHeight;
+
+                    // Get the image data for the segment
+                    const imageData = ctx.getImageData(x, y, segmentWidth, segmentHeight);
+                    let imageTile = {
+                        image : imageData,
+                        posX : x,
+                        posY : y,
+                        width : segmentWidth,
+                        height : segmentHeight,
+                    }
+                    grid.push(imageTile);
+                    index++;
+                }
+            }
+
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(img, 0, 0,canvas.height,canvas.width);
+
+            //TESTING
+            ctx.globalAlpha = 1;
+
+            createJigsaw(ctx);
+            console.log(jigsawPieces);
+            //Check Jigsaw
+
+            let segmentCount = 0;
+            jigsawPieces.forEach(p => {
+              segmentCount += p.length;
+            });
+
+            //Select a random piece
+            const randomPiece = getRandomObjectFromArray(jigsawPieces);
+            const jigsawPiece = getJigSawPieceObject(randomPiece);
+            const translatedPiece = translateJigSawPiece(jigsawPiece);
+            //clear the canvas and draw the new piece
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawJigsawPieceObject(translatedPiece,ctx);
+
+            //END TESTING
+        };
+    </script>
+</body>
+</html>
