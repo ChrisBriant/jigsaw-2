@@ -127,6 +127,13 @@
           });
         }
 
+        //Draw jigsaw piece as image, takes an array of the piece segments that contain the image data
+        function drawJigsawPieceAsImage(piece, ctx) {
+          piece.forEach(p => {
+            ctx.putImageData(p.image, p.posX, p.posY);
+          });
+        }
+
         function drawJigsawPieceObject(piece,ctx) {
           ctx.fillStyle = `rgba(${getRandomInt(0,255)}, ${getRandomInt(0,255)}, ${getRandomInt(0,255)}, 0.5)`;
           piece.forEach(piece => {
@@ -188,6 +195,45 @@
             return newPiece;
         }
 
+        function getPieceSize(piece) {
+          let maxY = null;
+          let maxX = null;
+
+          piece.forEach(p => {
+            if(!maxX && !maxY) {
+              maxX = p.posX;
+              maxY = p.posY;
+            } else {
+              if(p.posX > maxX) {
+                maxX += p.posX;
+              } 
+              if(p.posY > maxY) {
+                maxY += p.posY;
+              } 
+            }
+          });
+          return {
+            width : maxX + piece[0].width,
+            height : maxY + piece[0].height,
+          }
+        }
+
+        function translateJigSawPieceCenter(piece) {
+          const pieceSize = getPieceSize(piece);
+          const translateY = (canvas.width/ 2) - (pieceSize.height / 2);
+          const translateX = (canvas.width/ 2) - (pieceSize.width / 2);
+          let newPiece = [];
+
+          piece.forEach(segment => {
+              let newSegment = {...segment};
+              newSegment.posX = segment.posX + translateX;
+              newSegment.posY = segment.posY + translateY;
+              newPiece.push(newSegment);                
+          });
+          console.log('I AM THE NEW PIECE', newPiece);
+          return newPiece;
+        } 
+
         ////////////////////////////////////////////////////////////////////////
         // MAIN
         // Create an image object
@@ -209,6 +255,7 @@
             const ctx = canvas.getContext("2d");
 
             // Draw the image on the canvas
+            // Has to be drawn to the canvas for it to be able to collect the Jigsaw Pieces
             ctx.drawImage(img, 0, 0,canvas.height,canvas.width);
 
             // Get the width and height of each segment
@@ -258,10 +305,11 @@
             const jigsawPiece = getJigSawPieceObject(randomPiece);
             const translatedPiece = translateJigSawPiece(jigsawPiece);
             //clear the canvas and draw the new piece
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = '#eee';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawJigsawPieceObject(translatedPiece,ctx);
-
+            const centeredPiece = translateJigSawPieceCenter(translatedPiece);
+            drawJigsawPieceAsImage(centeredPiece,ctx);
             //END TESTING
         };
     </script>
