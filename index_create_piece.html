@@ -230,7 +230,6 @@
               newSegment.posY = segment.posY + translateY;
               newPiece.push(newSegment);                
           });
-          console.log('I AM THE NEW PIECE', newPiece);
           return newPiece;
         } 
 
@@ -304,12 +303,21 @@
             const randomPiece = getRandomObjectFromArray(jigsawPieces);
             const jigsawPiece = getJigSawPieceObject(randomPiece);
             const translatedPiece = translateJigSawPiece(jigsawPiece);
+            //Piece without the image data
+            let newPiece = translatedPiece.map(p => ({ 
+              posX : p.posX, 
+              posY : p.posY,
+              width : p.width,
+              height :p.height 
+            }));
+            console.log('I AM THE NEW PIECE', newPiece);
             //clear the canvas and draw the new piece
             ctx.fillStyle = '#eee';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawJigsawPieceObject(translatedPiece,ctx);
             const centeredPiece = translateJigSawPieceCenter(translatedPiece);
             drawJigsawPieceAsImage(centeredPiece,ctx);
+            console.log('CANVAS DIMENSIONS', canvas.width,canvas.height);
             //END TESTING
         };
     </script>
